@@ -4,6 +4,10 @@ package budgettracker;
 import java.math.BigDecimal;
 import java.util.Locale;
 import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.Month;
+import java.util.List;
+import java.util.ArrayList;
 
 import javafx.application.Application;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -24,12 +28,23 @@ import javafx.collections.FXCollections;
 
 
 public class BudgetTracker extends Application {
+    private ObservableList<Transaction> transactionsList = FXCollections.observableArrayList();
 
-    private VBox createMonthlyView(String month){
+    private VBox createMonthlyView(Month month){
+
+        List<Transaction> monthlyTransactions = transactionsList.stream()
+            .filter(transaction -> transaction.getDate().getMonth() == month)
+            .toList();
+        int monthlyTransactionCount = monthlyTransactions.size();
+        BigDecimal monthlySpend = monthlyTransactions.stream()
+            .map(transaction -> transaction.getAmount())
+            .reduce(BigDecimal.ZERO, (currentAmount, transaction) -> currentAmount.add(transaction));
         VBox monthlyLayout = new VBox();
         HBox header = new HBox();
-        Label monthInfo = new Label(month + " - Total Spend: 0.00");
-        Label transactionCount = new Label("Transactions: 0");
+        NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(Locale.US);
+        String stringMonthlySpend = currencyFormatter.format(monthlySpend);
+        Label monthInfo = new Label(month + " - Total Spend: " + stringMonthlySpend);
+        Label transactionCount = new Label("Transactions: " + monthlyTransactionCount);
         HBox chartArea = new HBox();
         PieChart transactionSummary = new PieChart();
         TableView<CategorySummary> dataTable = new TableView<>();
@@ -128,11 +143,14 @@ public class BudgetTracker extends Application {
         layout.setTop(tabViews);
 
         januaryView.setOnAction(event -> 
-            layout.setCenter(createMonthlyView("January"))
+            layout.setCenter(createMonthlyView(Month.JANUARY))
         );
         februaryView.setOnAction(event ->
-            layout.setCenter(createMonthlyView("February"))
+            layout.setCenter(createMonthlyView(Month.FEBRUARY))
         );
+        transactionsList.add(new Transaction("Walmart", LocalDate.of(2026, 01, 23), new BigDecimal("450.00"),"Groceries"));
+        transactionsList.add(new Transaction("Texas Roadhouse", LocalDate.of(2026, 01, 23), new BigDecimal("300.00"), "Dining"));
+        transactionsList.add(new Transaction("NewRez", LocalDate.of(2026, 01, 05), new BigDecimal("1200.00"), "Mortgage"));
 
         Scene scene = new Scene(layout);
 
