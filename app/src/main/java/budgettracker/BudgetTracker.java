@@ -8,6 +8,9 @@ import java.time.LocalDate;
 import java.time.Month;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.math.RoundingMode;
 
 import javafx.application.Application;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -27,8 +30,10 @@ import javafx.collections.ObservableList;
 import javafx.collections.FXCollections;
 
 
+
 public class BudgetTracker extends Application {
     private ObservableList<Transaction> transactionsList = FXCollections.observableArrayList();
+    private List<String> categoryList = new ArrayList<>(List.of("Groceries", "Mortgage", "Utilities", "Dining"));
 
     private VBox createMonthlyView(Month month){
 
@@ -39,6 +44,16 @@ public class BudgetTracker extends Application {
         BigDecimal monthlySpend = monthlyTransactions.stream()
             .map(transaction -> transaction.getAmount())
             .reduce(BigDecimal.ZERO, (currentAmount, transaction) -> currentAmount.add(transaction));
+
+        Map<String, BigDecimal> transactionMap = new HashMap<>(); 
+        for (String category: categoryList){
+            transactionMap.put(category, BigDecimal.ZERO);
+        }
+        for (Transaction transaction: monthlyTransactions){
+            BigDecimal currentTotal = transactionMap.get(transaction.getCategory());
+            BigDecimal updatedTotal = currentTotal.add(transaction.getAmount());
+            transactionMap.replace(transaction.getCategory(), updatedTotal);
+        }
         VBox monthlyLayout = new VBox();
         HBox header = new HBox();
         NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(Locale.US);
@@ -51,19 +66,27 @@ public class BudgetTracker extends Application {
         TableColumn<CategorySummary, String> category = new TableColumn<>("Category");
         TableColumn<CategorySummary, BigDecimal> amount = new TableColumn<>("Amount");
         TableColumn<CategorySummary, Double> percentage = new TableColumn<>("Percentage");
-        TableColumn<CategorySummary, Integer> transactions = new TableColumn<>("Transactions");
+        TableColumn<CategorySummary, Long> transactions = new TableColumn<>("Transactions");
 
         dataTable.getColumns().addAll(category, amount, percentage, transactions);
-        ObservableList<PieChart.Data> chartData = FXCollections.observableArrayList(
-            new PieChart.Data("Groceries", 450.00),
-            new PieChart.Data("Dining", 300.00),
-            new PieChart.Data("Mortgage", 1200.00)
-        );
-        ObservableList<CategorySummary> categorySummaryData = FXCollections.observableArrayList(
-            new CategorySummary("Groceries", new BigDecimal("450.00"), 23.08, 8),
-            new CategorySummary("Dining", new BigDecimal("300.00"), 15.38, 6),
-            new CategorySummary("Mortgage", new BigDecimal("1200.00"), 61.54, 1)
-        );
+        ObservableList<PieChart.Data> chartData = FXCollections.observableArrayList();
+        for (Map.Entry<String, BigDecimal> entry: transactionMap.entrySet()){
+            if (entry.getValue().compareTo(BigDecimal.ZERO) > 0){
+                chartData.add(new PieChart.Data(entry.getKey(), entry.getValue().doubleValue()));
+            }
+        }
+        ObservableList<CategorySummary> categorySummaryData = FXCollections.observableArrayList();
+        for (String categoryName: categoryList){
+            BigDecimal categoryAmount = transactionMap.get(categoryName);
+            long categoryTransactionCount = monthlyTransactions.stream()
+                .filter(transaction -> transaction.getCategory().equals(categoryName))
+                .count();
+            BigDecimal categoryPercentage = BigDecimal.ZERO;
+            if (monthlySpend.compareTo(BigDecimal.ZERO) > 0) {
+                categoryPercentage = categoryAmount.divide(monthlySpend, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100"));
+            } 
+            categorySummaryData.add(new CategorySummary(categoryName, categoryAmount, categoryPercentage.doubleValue(), categoryTransactionCount));
+        }
 
         category.setCellValueFactory(cellData ->
             new ReadOnlyObjectWrapper<>(cellData.getValue().getCategory())   

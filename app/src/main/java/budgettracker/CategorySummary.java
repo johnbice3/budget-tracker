@@ -6,9 +6,9 @@ public class CategorySummary {
     private String category;
     private BigDecimal amount;
     private double percentage;
-    private int transactionCount;
+    private long transactionCount;
 
-    public CategorySummary(String category, BigDecimal amount, double percentage, int transactionCount){
+    public CategorySummary(String category, BigDecimal amount, double percentage, long transactionCount){
         this.category = category;
         this.amount = amount;
         this.percentage = percentage;
@@ -23,7 +23,7 @@ public class CategorySummary {
     public double getPercentage(){
         return this.percentage;
     }
-    public int getTransactionCount(){
+    public long getTransactionCount(){
         return this.transactionCount;
     }
 }
